@@ -11,6 +11,8 @@ type MenuRepository interface {
 	Save(ctx context.Context, menu *model.Menu) (*model.Menu, error)
 	List(ctx context.Context, menus *model.Menu) ([]*model.Menu, error)
 	FindByIDS(ctx context.Context, ids []string) ([]*model.Menu, error)
+	Update(ctx context.Context, menu *model.Menu) (*model.Menu, error)
+	Delete(ctx context.Context, id string) error
 }
 
 func NewMenuRepository(
@@ -68,4 +70,16 @@ func (r *menuRepository) FindByIDS(ctx context.Context, ids []string) ([]*model.
 		return nil, err
 	}
 	return menuList, nil
+}
+
+func (r *menuRepository) Update(ctx context.Context, menu *model.Menu) (*model.Menu, error) {
+	if err := r.DB(ctx).Save(menu).Error; err != nil {
+		return nil, err
+	}
+	return menu, nil
+}
+
+
+func (r *menuRepository) Delete(ctx context.Context, id string) error {
+	return r.DB(ctx).Delete(&model.Menu{}, "id = ?", id).Error
 }

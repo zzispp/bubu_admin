@@ -127,7 +127,6 @@ func (h *UserHandler) UpdateProfile(ctx *gin.Context) {
 	v1.HandleSuccess(ctx, nil)
 }
 
-
 func (h *UserHandler) AddRoleToUser(ctx *gin.Context) {
 	var req v1.AddRoleToUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -136,6 +135,61 @@ func (h *UserHandler) AddRoleToUser(ctx *gin.Context) {
 	}
 
 	if err := h.userService.AddRoleToUser(ctx, req.UserId, req.RoleIds); err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	v1.HandleSuccess(ctx, nil)
+}
+
+func (h *UserHandler) ListUser(ctx *gin.Context) {
+	var req v1.ListUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	users, err := h.userService.List(ctx, &req)
+	if err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	v1.HandleSuccess(ctx, &v1.ListUserResponse{
+		Users: users,
+	})
+}
+
+func (h *UserHandler) DeleteUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	if err := h.userService.Delete(ctx, id); err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	v1.HandleSuccess(ctx, nil)
+}
+
+func (h *UserHandler) GetUserByID(ctx *gin.Context) {
+	id := ctx.Param("id")
+	user, err := h.userService.GetByID(ctx, id)
+	if err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	v1.HandleSuccess(ctx, user)
+}
+
+func (h *UserHandler)UpdateUser(ctx *gin.Context) {
+	id := ctx.Param("id")
+	var req v1.UpdateUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	if err := h.userService.Update(ctx, id, &req); err != nil {
 		v1.HandleError(ctx, http.StatusInternalServerError, err, nil)
 		return
 	}

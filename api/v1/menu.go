@@ -8,8 +8,10 @@ type CreateMenuRequest struct {
 	Description string `json:"description"`
 	Sequence    int32    `json:"sequence"`
 	Type        string `json:"type"`
+	Icon        string `json:"icon"`
 	Path        string `json:"path"`
-	PathType    string `json:"path_type"`
+	Component   string `json:"component"`
+	Redirect    string `json:"redirect,omitempty"`
 	Status      string    `json:"status"`
 	ParentID    string `json:"parent_id"`
 }
@@ -20,4 +22,19 @@ type ListMenuRequest struct {
 }
 type ListMenuResponse struct {
 	Menus []*model.Menu `json:"menus"`
+}
+
+type UpdateMenuRequest struct {
+	ID          string `json:"id"`
+	Code        string `json:"code"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Sequence    int32  `json:"sequence"`
+	Type        string `json:"type"`
+	Icon        string `json:"icon"`
+	Path        string `json:"path"`
+	Component   string `json:"component"`
+	Redirect    string `json:"redirect,omitempty"`
+	Status      string `json:"status"`
+	ParentID    string `json:"parent_id"`
 }

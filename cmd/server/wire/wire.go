@@ -10,6 +10,7 @@ import (
 	"bubu_admin/internal/service"
 	"bubu_admin/pkg/app"
 	"bubu_admin/pkg/jwt"
+	"bubu_admin/pkg/casbin"
 	"bubu_admin/pkg/log"
 	"bubu_admin/pkg/server/http"
 	"bubu_admin/pkg/sid"
@@ -25,8 +26,6 @@ var repositorySet = wire.NewSet(
 	repository.NewUserRepository,
 	repository.NewMenuRepository,
 	repository.NewRoleRepository,
-	repository.NewRoleMenuRepository,
-	repository.NewUserRoleRepository,
 )
 
 var serviceSet = wire.NewSet(
@@ -68,6 +67,7 @@ func NewWire(*viper.Viper, *log.Logger) (*app.App, func(), error) {
 		serverSet,
 		sid.NewSid,
 		jwt.NewJwt,
+		casbin.NewCasbin,
 		newApp,
 	))
 }

@@ -12,6 +12,7 @@ import (
 	"bubu_admin/internal/server"
 	"bubu_admin/internal/service"
 	"bubu_admin/pkg/app"
+	"bubu_admin/pkg/casbin"
 	"bubu_admin/pkg/jwt"
 	"bubu_admin/pkg/log"
 	"bubu_admin/pkg/server/http"
@@ -29,17 +30,16 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 	repositoryRepository := repository.NewRepository(logger, db)
 	transaction := repository.NewTransaction(repositoryRepository)
 	sidSid := sid.NewSid()
-	serviceService := service.NewService(transaction, logger, sidSid, jwtJWT, viperViper)
+	casbinCasbin := casbin.NewCasbin(db)
+	serviceService := service.NewService(transaction, logger, sidSid, jwtJWT, viperViper, casbinCasbin)
 	userRepository := repository.NewUserRepository(repositoryRepository)
 	menuRepository := repository.NewMenuRepository(repositoryRepository)
 	roleRepository := repository.NewRoleRepository(repositoryRepository)
-	userRoleRepository := repository.NewUserRoleRepository(repositoryRepository)
-	roleMenuRepository := repository.NewRoleMenuRepository(repositoryRepository)
-	userService := service.NewUserService(serviceService, userRepository, menuRepository, roleRepository, userRoleRepository, roleMenuRepository)
+	userService := service.NewUserService(serviceService, userRepository, menuRepository, roleRepository)
 	userHandler := handler.NewUserHandler(handlerHandler, userService)
-	menuService := service.NewMenuService(serviceService, menuRepository)
+	menuService := service.NewMenuService(serviceService, menuRepository, roleRepository)
 	menuHandler := handler.NewMenuHandler(handlerHandler, menuService)
-	roleService := service.NewRoleService(serviceService, roleRepository, menuRepository, roleMenuRepository)
+	roleService := service.NewRoleService(serviceService, roleRepository, menuRepository, userRepository)
 	roleHandler := handler.NewRoleHandler(handlerHandler, roleService)
 	httpServer := server.NewHTTPServer(logger, viperViper, jwtJWT, userHandler, menuHandler, roleHandler)
 	job := server.NewJob(logger)
@@ -50,7 +50,7 @@ func NewWire(viperViper *viper.Viper, logger *log.Logger) (*app.App, func(), err
 
 // wire.go:
 
-var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewTransaction, repository.NewUserRepository, repository.NewMenuRepository, repository.NewRoleRepository, repository.NewRoleMenuRepository, repository.NewUserRoleRepository)
+var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repository.NewTransaction, repository.NewUserRepository, repository.NewMenuRepository, repository.NewRoleRepository)
 
 var serviceSet = wire.NewSet(service.NewService, service.NewUserService, service.NewMenuService, service.NewRoleService)
 

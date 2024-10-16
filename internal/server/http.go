@@ -78,6 +78,14 @@ func NewHTTPServer(
 			strictAuthRouter.POST("/user/addRoleToUser", userHandler.AddRoleToUser)
 			// 获取用户信息
 			strictAuthRouter.GET("/user/getProfile", userHandler.GetProfile)
+			// 获取用户列表
+			strictAuthRouter.POST("/user/listUser", userHandler.ListUser)
+			// 获取用户信息
+			strictAuthRouter.GET("/user/getUserByID/:id", userHandler.GetUserByID)
+			// 删除用户
+			strictAuthRouter.DELETE("/user/deleteUser/:id", userHandler.DeleteUser)
+			// 更新用户
+			strictAuthRouter.PUT("/user/updateUser/:id", userHandler.UpdateUser)
 
 			// ========菜单相关========
 			// 添加菜单
@@ -85,10 +93,24 @@ func NewHTTPServer(
 
 			// 获取菜单列表
 			strictAuthRouter.POST("/menu/listMenu", menuHandler.ListMenu)
+			// 更新菜单
+			strictAuthRouter.PUT("/menu/updateMenu/:id", menuHandler.UpdateMenu)
+			// 获取单个菜单
+			strictAuthRouter.GET("/menu/getMenuByID/:id", menuHandler.GetMenuByID)
+			// 删除菜单
+			strictAuthRouter.DELETE("/menu/deleteMenu/:id", menuHandler.DeleteMenu)
 
 			// ========角色相关========
 			// 添加角色
 			strictAuthRouter.POST("/role/createRole", roleHandler.CreateRole)
+			// 修改角色
+			strictAuthRouter.PUT("/role/updateRole/:id", roleHandler.UpdateRole)
+			// 获取角色列表 
+			strictAuthRouter.POST("/role/listRole", roleHandler.ListRole)
+			// 删除角色
+			strictAuthRouter.DELETE("/role/deleteRole/:id", roleHandler.DeleteRole)
+			// 获取角色信息
+			strictAuthRouter.GET("/role/getRoleByID/:id", roleHandler.GetRoleByID)
 		}
 	}
 

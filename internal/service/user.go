@@ -18,6 +18,10 @@ type UserService interface {
 	GetProfile(ctx context.Context, userId string) (*v1.GetProfileResponseData, error)
 	UpdateProfile(ctx context.Context, userId string, req *v1.UpdateProfileRequest) error
 	AddRoleToUser(ctx context.Context, userId string, roleIds []string) error
+	List(ctx context.Context, req *v1.ListUserRequest) ([]*model.User, error)
+	Delete(ctx context.Context, id string) error
+	GetByID(ctx context.Context, id string) (*model.User, error)
+	Update(ctx context.Context, id string, req *v1.UpdateUserRequest) error
 }
 
 func NewUserService(
@@ -25,25 +29,19 @@ func NewUserService(
 	userRepo repository.UserRepository,
 	menuRepo repository.MenuRepository,
 	roleRepo repository.RoleRepository,
-	userRoleRepo repository.UserRoleRepository,
-	roleMenuRepo repository.RoleMenuRepository,
 ) UserService {
 	return &userService{
-		userRepo:     userRepo,
-		menuRepo:     menuRepo,
-		roleRepo:     roleRepo,
-		userRoleRepo: userRoleRepo,
-		roleMenuRepo: roleMenuRepo,
-		Service:      service,
+		userRepo: userRepo,
+		menuRepo: menuRepo,
+		roleRepo: roleRepo,
+		Service:  service,
 	}
 }
 
 type userService struct {
-	userRepo     repository.UserRepository
-	menuRepo     repository.MenuRepository
-	roleRepo     repository.RoleRepository
-	userRoleRepo repository.UserRoleRepository
-	roleMenuRepo repository.RoleMenuRepository
+	userRepo repository.UserRepository
+	menuRepo repository.MenuRepository
+	roleRepo repository.RoleRepository
 	*Service
 }
 
@@ -110,9 +108,8 @@ func (s *userService) Login(ctx context.Context, req *v1.LoginRequest) (string, 
 }
 
 func (s *userService) GetProfile(ctx context.Context, userId string) (*v1.GetProfileResponseData, error) {
-
 	if userId == s.conf.GetString("security.root.id") {
-		menus, err := s.menuRepo.List(ctx,&model.Menu{})
+		menus, err := s.menuRepo.List(ctx, &model.Menu{})
 		if err != nil {
 			return nil, fmt.Errorf("获取菜单列表失败")
 		}
@@ -132,43 +129,30 @@ func (s *userService) GetProfile(ctx context.Context, userId string) (*v1.GetPro
 		return nil, err
 	}
 
-	// 获取用户角色
-	userRoles, err := s.userRoleRepo.FindByUserID(ctx, userId)
+	userRoles, err := s.casbin.GetRolesForUser(userId)
 	if err != nil {
 		return nil, err
 	}
-
-	roleIds := make([]string, 0)
-	for _, role := range userRoles {
-		roleIds = append(roleIds, role.RoleID)
-	}
-
+	menus := make([][]string, 0)
 	//根据用户的角色拿到对应的菜单
-	roleMenus, err := s.roleMenuRepo.FindByRoleIDS(ctx, roleIds)
-	if err != nil {
-		return nil, err
+	for _, role := range userRoles {
+		roleMenus, err := s.casbin.GetMenusForRole(role)
+		if err != nil {
+			return nil, err
+		}
+		menus = append(menus, roleMenus...)
 	}
 
-	// 使用map来存储菜单ID，确保菜单ID的唯一性
-	menuIdMap := make(map[string]struct{})
-	for _, roleMenu := range roleMenus {
-		menuIdMap[roleMenu.MenuID] = struct{}{}
-	}
+	//提取菜单ID
+	menuIds := utils.GetMenuTreeBuilderInstance().ExtractMenuIds(menus)
 
-	// 将map中的键转换为切片，得到去重后的菜单ID列表
-	menuIds := make([]string, 0, len(menuIdMap))
-	for menuId := range menuIdMap {
-		menuIds = append(menuIds, menuId)
-	}
-
-	// 获取去重后的菜单列表
-	menus, err := s.menuRepo.FindByIDS(ctx, menuIds)
+	menusEntities, err := s.menuRepo.FindByIDS(ctx, menuIds)
 	if err != nil {
 		return nil, err
 	}
 
 	// 构建菜单树
-	menuTree := utils.GetMenuTreeBuilderInstance().BuildMenuTree(menus)
+	menuTree := utils.GetMenuTreeBuilderInstance().BuildMenuTree(menusEntities)
 
 	return &v1.GetProfileResponseData{
 		UserId: user.ID,
@@ -203,46 +187,98 @@ func (s *userService) AddRoleToUser(ctx context.Context, userId string, roleIds 
 	if user == nil {
 		return v1.ErrUserNotFound
 	}
+	//去重
+	roleIds = utils.GetRoleBuilderInstance().RemoveDuplicateRoleIds(roleIds)
 
 	roles, err := s.roleRepo.FindByIDS(ctx, roleIds)
 	if err != nil {
 		return err
 	}
-
-	if len(roleIds) != len(roles) {
+	if len(roles) == 0 {
 		return v1.ErrRoleNotFound
 	}
 
-	// 获取用户已有的角色
-	existingUserRoles, err := s.userRoleRepo.FindByUserID(ctx, userId)
+	// 为用户批量添加角色
+	_, err = s.casbin.AddRolesForUser(userId, roleIds)
 	if err != nil {
-		return err
-	}
-
-	// 创建一个map来存储已有的角色ID
-	existingRoleIDs := make(map[string]bool)
-	for _, ur := range existingUserRoles {
-		existingRoleIDs[ur.RoleID] = true
-	}
-
-	// 只添加新的角色
-	userRoles := make([]*model.UserRole, 0)
-	for _, role := range roles {
-		if !existingRoleIDs[role.ID] {
-			userRoles = append(userRoles, &model.UserRole{
-				UserID: userId,
-				RoleID: role.ID,
-			})
-		}
-	}
-
-	// 如果有新角色需要添加，则保存
-	if len(userRoles) > 0 {
-		err = s.userRoleRepo.SaveBatch(ctx, userRoles)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("为用户添加角色失败: %w", err)
 	}
 
 	return nil
+}
+
+func (s *userService) List(ctx context.Context, req *v1.ListUserRequest) ([]*model.User, error) {
+	users, err := s.userRepo.List(ctx, &model.User{})
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range users {
+		roles, err := s.casbin.GetRolesForUser(user.ID)
+		if err != nil {
+			return nil, err
+		}
+		roleEntities, err := s.roleRepo.FindByIDS(ctx, roles)
+		if err != nil {
+			return nil, err
+		}
+		user.Roles = roleEntities
+	}
+	return users, nil
+}
+
+func (s *userService) Delete(ctx context.Context, id string) error {
+	return s.userRepo.Delete(ctx, id)
+}
+
+func (s *userService) GetByID(ctx context.Context, id string) (*model.User, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	roles, err := s.casbin.GetRolesForUser(user.ID)
+	if err != nil {
+		return nil, err
+	}
+	roleEntities, err := s.roleRepo.FindByIDS(ctx, roles)
+	if err != nil {
+		return nil, err
+	}
+	user.Roles = roleEntities
+	return user, nil
+}
+
+func (s *userService) Update(ctx context.Context, id string, req *v1.UpdateUserRequest) error {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	user.Email = req.Email
+	user.Name = req.Name
+
+	_, err = s.roleRepo.FindByIDS(ctx, req.Roles)
+	if err != nil {
+		return fmt.Errorf("角色不存在")
+	}
+
+	// 更新角色
+	// 先删除用户的所有角色
+	oldRoles, err := s.casbin.GetRolesForUser(user.ID)
+	if err != nil {
+		return fmt.Errorf("获取用户角色失败: %w", err)
+	}
+	for _, role := range oldRoles {
+		_, err = s.casbin.RemoveRoleForUser(user.ID, role)
+		if err != nil {
+			return fmt.Errorf("删除用户角色失败: %w", err)
+		}
+	}
+
+	// 添加新的角色
+	_, err = s.casbin.AddRolesForUser(user.ID, req.Roles)
+	if err != nil {
+		return fmt.Errorf("添加用户角色失败: %w", err)
+	}
+
+	return s.userRepo.Update(ctx, user)
 }

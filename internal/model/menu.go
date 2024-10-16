@@ -10,20 +10,21 @@ import (
 )
 
 type Menu struct {
-	ID          string          `json:"id" gorm:"size:20;primarykey;"`   // 唯一标识
-	Code        string          `json:"code" gorm:"size:32;index;"`      // 菜单代码（每个级别唯一）
-	Name        string          `json:"name" gorm:"size:128;index"`      // 菜单显示名称
-	Description string          `json:"description" gorm:"size:1024"`    // 菜单详细描述
-	Sequence    int32           `json:"sequence" gorm:"index;"`          // 排序序列（升序排列）
-	Type        string          `json:"type" gorm:"size:20;index"`       // 菜单类型（page、nav、button）
-	Path        string          `json:"path" gorm:"size:255;"`           // 菜单访问路径
-	PathType    string          `json:"path_type" gorm:"size:20;index"`  // 菜单路径类型（internal、external）
-	Status      string          `json:"status" gorm:"size:20;index"`     // 菜单状态（enable、disable）
-	ParentID    string          `json:"parent_id" gorm:"size:20;index;"` // 父级ID（来自Menu.ID）
-	CurrentPath string          `json:"current_path" gorm:"-"`            // 当前路径
-	Children    []*Menu         `json:"children,omitempty" gorm:"-"`               // 子菜单
-	CreatedAt   time.Time       `json:"created_at" gorm:"index;"`        // 创建时间
-	UpdatedAt   time.Time       `json:"updated_at" gorm:"index;"`        // 更新时间
+	ID          string    `json:"id" gorm:"size:20;primarykey;"`   // 唯一标识
+	Code        string    `json:"code" gorm:"size:32;index;"`      // 菜单代码（每个级别唯一）
+	Name        string    `json:"name" gorm:"size:128;index"`      // 菜单显示名称
+	Description string    `json:"description" gorm:"size:1024"`    // 菜单详细描述
+	Sequence    int32     `json:"sequence" gorm:"index;"`          // 排序序列（升序排列）
+	Type        string    `json:"type" gorm:"size:20;index"`       // 菜单类型（nav,page）
+	Path        string    `json:"path" gorm:"size:255;"`           // 菜单访问路径
+	Redirect    string    `json:"redirect,omitempty" gorm:"size:255;"` // 重定向路径
+	Component   string    `json:"component,omitempty" gorm:"size:255;"` // 组件路径
+	Icon        string    `json:"icon,omitempty" gorm:"size:255;"`      // 图标
+	Status      string    `json:"status" gorm:"size:20;index"`     // 菜单状态（enable、disable）
+	ParentID    string    `json:"parent_id" gorm:"size:20;index;"` // 父级ID（来自Menu.ID）
+	Children    []*Menu   `json:"children,omitempty" gorm:"-"`     // 子菜单
+	CreatedAt   time.Time `json:"created_at" gorm:"index;"`        // 创建时间
+	UpdatedAt   time.Time `json:"updated_at" gorm:"index;"`        // 更新时间
 }
 
 func (m *Menu) TableName() string {
@@ -49,10 +50,6 @@ func (m *Menu) BeforeCreate(tx *gorm.DB) error {
 		return fmt.Errorf("无效的菜单类型: %s", m.Type)
 	}
 
-	// 验证路径类型
-	if !consts.IsValidPathType(m.PathType) {
-		return fmt.Errorf("无效的路径类型: %s", m.PathType)
-	}
 
 	// 验证状态
 	if !consts.IsValidStatus(m.Status) {

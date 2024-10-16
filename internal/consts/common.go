@@ -6,6 +6,12 @@ const (
 	StatusDisable string = "disable"
 )
 
+//策略类型 menu/api
+const (
+	StrategyTypeMenu string = "menu"
+	StrategyTypeApi  string = "api"
+)
+
 // 菜单状态
 var ValidStatuses = []string{StatusEnable, StatusDisable}
 

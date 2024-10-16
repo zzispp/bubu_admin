@@ -39,3 +39,17 @@ type AddRoleToUserRequest struct {
 	UserId string `json:"user_id" binding:"required"`
 	RoleIds []string `json:"role_ids" binding:"required"`
 }
+
+type ListUserRequest struct {
+	Email string `json:"email"`
+}
+
+type ListUserResponse struct {
+	Users []*model.User `json:"users"`
+}
+
+type UpdateUserRequest struct {
+	Email string `json:"email" binding:"required,email" example:"1234@gmail.com"`
+	Name string `json:"name" example:"alan"`
+	Roles []string `json:"roles"`
+}

@@ -8,13 +8,14 @@ import (
 )
 
 type User struct {
-	ID        string `gorm:"primarykey"`
-	Name      string
-	Password  string `gorm:"not null"`
-	Email     string `gorm:"not null"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID        string `gorm:"primarykey" json:"id"`
+	Name      string `json:"name"`
+	Password  string `gorm:"not null" json:"-"`
+	Email     string `gorm:"not null" json:"email"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Roles     []*Role       `gorm:"many2many:user_roles" json:"roles"`
 }
 
 func (u *User) TableName() string {

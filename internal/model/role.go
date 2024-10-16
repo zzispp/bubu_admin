@@ -18,8 +18,7 @@ type Role struct {
 	Status      string    `json:"status" gorm:"size:20;index"`   // Status of role (disabled, enabled)
 	CreatedAt   time.Time `json:"created_at" gorm:"index;"`      // Create time
 	UpdatedAt   time.Time `json:"updated_at" gorm:"index;"`      // Update time
-	Menus       []*RoleMenu `json:"menus" gorm:"-"`                // Role menu list
-	MenuIDs     []string    `json:"menu_ids" gorm:"-"`            // Role menu list
+	Menus       []*Menu   `json:"menus" gorm:"many2many:role_menus;"` // 角色菜单
 }
 
 func (r *Role) TableName() string {
